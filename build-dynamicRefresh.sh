@@ -8,5 +8,6 @@ mkdir -p build
 cd build
 
 cmake ..
-cmake --build . --parallel
+cmake --build .
+#cmake --build . --parallel
 
