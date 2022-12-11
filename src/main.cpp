@@ -1,49 +1,34 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2012, 2018-2022 Intel Corporation
+// Copyright (c) 2009-2020, Intel Corporation
+
+// Based on Code by IntelPCM
+// Modified from Intel by Chihun Song: 12-09-2022
+// Updated by Gregory Jun: 12-10-2022
 
 #define PCM_USE_PCI_MM_LINUX
 
-// SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2012, 2018 Intel Corporation
-// written by Roman Dementiev
 #include "cpucounters.h"
-#ifdef _MSC_VER
-#include <windows.h>
-#include "windows/windriver.h"
-#else
-#include <unistd.h>
-#endif
+
+#include <iomanip>
 #include <iostream>
 #include <stdlib.h>
-#include <iomanip>
 #include <string.h>
-#ifdef _MSC_VER
-#include "freegetopt/getopt.h"
-#endif
-#include "address.h"
-#include <time.h>
 #include <string>
+#include <time.h>
+#include <unistd.h>
+
+#include "address.h"
 
 using namespace pcm;
 
-void print_usage(const char *progname)
-{
-    std::cout << "Usage " << progname << " [-w value] [-d] group bus device function offset\n\n";
-    std::cout << "  Reads/writes 32-bit PCICFG register \n";
-    std::cout << "   -w value : write the value before reading \n";
-    std::cout << "   -d       : output all numbers in dec (default is hex)\n";
-    std::cout << "\n";
-}
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::cout << "\n Processor Counter Monitor " << PCM_VERSION << "\n";
-
     std::cout << "\n PCICFG read/write utility\n\n";
 
 #ifdef __linux__
 #ifndef PCM_USE_PCI_MM_LINUX
-    std::cout << "\n To access *extended* configuration space recompile with -DPCM_USE_PCI_MM_LINUX option.\n";
+    std::cout << "\n To access *extended* configuration space recompile with "
+                 "-DPCM_USE_PCI_MM_LINUX option.\n";
 #endif
 #endif
 
@@ -64,6 +49,9 @@ int main(int argc, char *argv[])
 
     bool write = false;
     bool dec = false;
+    bool err_det_r1 = false, err_det_r0 = false;
+    bool pre_a_err_det_r1 = false, pre_a_err_det_r0 = false, pre_b_err_det_r1 = false, pre_b_err_det_r0 = false, pre_c_err_det_r1 = false,
+         pre_c_err_det_r0 = false, pre_d_err_det_r1 = false, pre_d_err_det_r0 = false;
 
     int channel = 0; // Channel A=0, B=1, C=2, D=3
 
@@ -76,22 +64,7 @@ int main(int argc, char *argv[])
     int tREFI_off = tREFI_Off;
     int err_cnt_off = Err_cnt_Off;
 
-#ifdef _MSC_VER
-    // Increase the priority a bit to improve context switching delays on Windows
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-
-    // WARNING: This driver code (msr.sys) is only for testing purposes, not for production use
-    Driver drv = Driver(Driver::msrLocalPath());
-    // drv.stop();     // restart driver (usually not needed)
-    if (!drv.start())
-    {
-        tcerr << "Can not load MSR driver.\n";
-        tcerr << "You must have a signed  driver at " << drv.driverPath() << " and have administrator rights to run this program\n";
-        return -1;
-    }
-#endif
-    try
-    {
+    try {
         // PciHandleType h(group, bus, device, function);
 
         // Set IMC register address (IMC Thermal Control)
@@ -110,63 +83,70 @@ int main(int argc, char *argv[])
 
         if (!dec)
             std::cout << std::hex << std::showbase;
-        // if (write)
-        // {
-        //     std::cout << " Writing " << value << " to " << group << ":" << bus << ":" << device << ":" << function << "@" << offset << "\n";
-        //     h.write32(offset, value);
-        // }
+        ch_a_thermal.read32(tREFI_off, &ch_tref_reg);
+        ch_tref_const = ch_tref_reg & 0xffff8000;
+        ch_trefi_val = base_tREFI & 0x7fff;
+        ch_a_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
+        ch_b_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
+        ch_c_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
+        ch_d_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
 
-        while (1)
-        {
-
+        while (1) {
             // std::cout << " Channel variable : " << channel << "\n\n";
 
-            if (channel == 0)
-            { // Channel A
+            if (channel == 0) { // Channel A
                 ch_thermal = ch_a_thermal;
                 ch_err = ch_a_err;
                 pre_d_err_r1_val = ch_err_r1_val;
                 pre_d_err_r0_val = ch_err_r0_val;
                 pre_err_r1_val = pre_a_err_r1_val;
                 pre_err_r0_val = pre_a_err_r0_val;
+                pre_d_err_det_r1 = err_det_r1;
+                pre_d_err_det_r0 = err_det_r0;
+                err_det_r1 = pre_a_err_det_r1;
+                err_det_r0 = pre_a_err_det_r0;
                 std::cout << " Channel A Register Value."
                           << "\n\n";
-            }
-            else if (channel == 1)
-            { // Channel B
+            } else if (channel == 1) { // Channel B
                 ch_thermal = ch_b_thermal;
                 ch_err = ch_b_err;
                 pre_a_err_r1_val = ch_err_r1_val;
                 pre_a_err_r0_val = ch_err_r0_val;
                 pre_err_r1_val = pre_b_err_r1_val;
                 pre_err_r0_val = pre_b_err_r0_val;
+                pre_a_err_det_r1 = err_det_r1;
+                pre_a_err_det_r0 = err_det_r0;
+                err_det_r1 = pre_b_err_det_r1;
+                err_det_r0 = pre_b_err_det_r0;
                 std::cout << " Channel B Register Value."
                           << "\n\n";
-            }
-            else if (channel == 2)
-            { // Channel C
+            } else if (channel == 2) { // Channel C
                 ch_thermal = ch_c_thermal;
                 ch_err = ch_c_err;
                 pre_b_err_r1_val = ch_err_r1_val;
                 pre_b_err_r0_val = ch_err_r0_val;
                 pre_err_r1_val = pre_c_err_r1_val;
                 pre_err_r0_val = pre_c_err_r0_val;
+                pre_b_err_det_r1 = err_det_r1;
+                pre_b_err_det_r0 = err_det_r0;
+                err_det_r1 = pre_c_err_det_r1;
+                err_det_r0 = pre_c_err_det_r0;
                 std::cout << " Channel C Register Value."
                           << "\n\n";
-            }
-            else if (channel == 3)
-            {
+            } else if (channel == 3) { // Channel D
                 ch_thermal = ch_d_thermal;
                 ch_err = ch_d_err;
                 pre_c_err_r1_val = ch_err_r1_val;
                 pre_c_err_r0_val = ch_err_r0_val;
                 pre_err_r1_val = pre_d_err_r1_val;
                 pre_err_r0_val = pre_d_err_r0_val;
+                pre_c_err_det_r1 = err_det_r1;
+                pre_c_err_det_r0 = err_det_r0;
+                err_det_r1 = pre_d_err_det_r1;
+                err_det_r0 = pre_d_err_det_r0;
                 std::cout << " Channel D Register Value."
                           << "\n\n";
-            }
-            else
-            {
+            } else {
                 channel = 0;
             }
 
@@ -187,26 +167,34 @@ int main(int argc, char *argv[])
             std::cout << " Rank 1 err count : " << ch_err_r1_val << " , Rank 0 err count : " << ch_err_r1_val << "\n\n";
 
             ch_thermal.read32(tREFI_off, &ch_tref_reg);
-            ch_tref_const = ch_tref_reg & 0xffff8000;
             ch_trefi_val = ch_tref_reg & 0x7fff;
 
             std::cout << " 1866 => tck = 1.072ns"
                       << "\n";
             std::cout << " Previous Channel tREFI(ck) : " << ch_trefi_val << ", ";
 
-            // if no error
-            if (((ch_r1_ovrflw + ch_r0_ovrflw) == 0) & (pre_err_r1_val >= ch_err_r1_val) & (pre_err_r0_val >= ch_err_r0_val))
-            {
-                if (ch_trefi_val < 0x71C0)
-                    ch_trefi_val = ch_trefi_val + step_tREFI;
-                else
-                    ch_trefi_val = ch_trefi_val;
+            if (((ch_r1_ovrflw + ch_r0_ovrflw) == 0) & (pre_err_r1_val >= ch_err_r1_val) & (pre_err_r0_val >= ch_err_r0_val)) { // if no error
+                if ((err_det_r1 == false) & (err_det_r0 == false)) {                                                            // if no error, increase trefI
+                    if (ch_trefi_val < 0x71C0) {                                                                                //  tREFI max
+                        ch_trefi_val = ch_trefi_val + step_tREFI_inc;
+                    } else
+                        ch_trefi_val = ch_trefi_val;
+                } else if ((pre_err_r1_val > ch_err_r1_val) & err_det_r1) {
+                    err_det_r1 = false;
+                    ch_trefi_val = ch_trefi_val - step_tREFI_dec << 1;
+                } else if ((pre_err_r0_val > ch_err_r0_val) & err_det_r0) {
+                    err_det_r0 = false;
+                    ch_trefi_val = ch_trefi_val - step_tREFI_dec << 1;
+                } else
+                    ch_trefi_val = ch_trefi_val - step_tREFI_dec << 1;
 
                 ch_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
-            }
-            else
-            { // if error
-                ch_trefi_val = ch_trefi_val - step_tREFI << 1;
+            } else { // if error
+                if (ch_r1_ovrflw || (pre_err_r1_val < ch_err_r1_val))
+                    err_det_r1 = true;
+                if (ch_r0_ovrflw || (pre_err_r0_val < ch_err_r0_val))
+                    err_det_r0 = true;
+                ch_trefi_val = ch_trefi_val - step_tREFI_dec << 1;
                 ch_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
             }
 
@@ -219,9 +207,7 @@ int main(int argc, char *argv[])
 
             usleep(100000);
         }
-    }
-    catch (std::exception &e)
-    {
+    } catch (std::exception &e) {
         std::cerr << "Error accessing registers: " << e.what() << "\n";
         std::cerr << "Please check if the program can access MSR/PCICFG drivers.\n";
     }

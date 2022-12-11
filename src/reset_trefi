@@ -1,0 +1,4 @@
+sudo ../build/bin/pcm-pcicfg -w 0x7EA39C70  0 0xff 20 0 0x214
+sudo ../build/bin/pcm-pcicfg -w 0x7EA39C70  0 0xff 20 1 0x214
+sudo ../build/bin/pcm-pcicfg -w 0x7EA39C70  0 0xff 21 0 0x214
+sudo ../build/bin/pcm-pcicfg -w 0x7EA39C70  0 0xff 21 1 0x214
