@@ -32,6 +32,15 @@
 #define step_tREFI_dec 0x100
 
 #define base_tREFI 7280
+// Power Control Unit address
+#define PCU_GRP 0x0 
+#define PCU_BUS 0xff 
+#define PCU_DEV 0x1E //30
+#define PCU_FUNC 0x0 //30
+#define MEM_ACCUM_BW_OFFSET_CH0 0x064
+#define MEM_ACCUM_BW_OFFSET_CH1 0x068
+#define MEM_ACCUM_BW_OFFSET_CH2 0x06C
+#define MEM_ACCUM_BW_OFFSET_CH3 0x070
 
 // MAX tREFI 4.5xtREFI at 5'C, min tREFI 2tREFI at 85 'C
 #define temp_slope base_tREFI * 2.5 / 80              // 182, tREFI/40

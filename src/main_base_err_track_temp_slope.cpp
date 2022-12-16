@@ -6,7 +6,7 @@
 // Updated by Gregory Jun: 12-10-2022
 
 #define PCM_USE_PCI_MM_LINUX
-
+//#define BW_STUFF
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -377,9 +377,9 @@ int main(int argc, char *argv[]) {
                 err_det_r0 = pre_a_err_det_r0;
 #ifdef BW_STUFF
                 if (reset_signal[0]) {
-                    ch_thermal.read32(tREFI_off, &ch_tref_reg);
-                    ch_trefi_val = ch_tref_reg & 0x7fff;
-                    ch_trefi_val = ch_trefi_val / 2;
+                    //ch_thermal.read32(tREFI_off, &ch_tref_reg);
+                    //ch_trefi_val = ch_tref_reg & 0x7fff;
+                    ch_trefi_val = base_tREFI;
                     ch_thermal.write32(tREFI_off, ch_tref_const + ch_trefi_val);
                 }
 #endif
@@ -517,10 +517,12 @@ int main(int argc, char *argv[]) {
                     err_det_r1 = false;
                     ch_trefi_val = ch_trefi_val - (step_tREFI_dec << 1);
                     std::cout << "\n err_det_r1 : 1 -> 0 \n ";
+                    //ch_err.write32(err_cnt_off, ch_err_reg&0x7fffffff);
                 } else if ((pre_err_r0_val >= ch_err_r0_val) & err_det_r0) {
                     err_det_r0 = false;
                     ch_trefi_val = ch_trefi_val - (step_tREFI_dec << 1);
                     std::cout << "\n err_det_r0 : 1 -> 0 \n ";
+                    //ch_err.write32(err_cnt_off, ch_err_reg&0xffff7fff);
                 } else {
                     ch_trefi_val = ch_trefi_val - (step_tREFI_dec << 1);
                 }
